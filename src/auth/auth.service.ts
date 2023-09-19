@@ -3,10 +3,17 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { AuthDto } from './dto';
 import * as argon from 'argon2';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { promises } from 'dns';
 
 @Injectable({})
 export class AuthService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private jwt: JwtService,
+    private config: ConfigService
+  ) {}
 
   async signup(dto: AuthDto) {
     try {
@@ -17,14 +24,14 @@ export class AuthService {
           email: dto.email,
           hash,
         },
-        select: {
+        /* select: {
           id: true,
           email: true,
           createdAt: true,
-        },
+        }, */
       });
       /* opcional: delete user.hash */
-      return user;
+      return this.signToken(user.id, user.email);
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -48,8 +55,8 @@ export class AuthService {
       const pwMatches = await argon.verify(user.hash, dto.hash);
 
       if (!pwMatches) throw new ForbiddenException('Credentials incorrect');
-      delete user.hash;
-      return user;
+    
+      return this.signToken(user.id, user.email);
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -57,6 +64,24 @@ export class AuthService {
         }
       }
       throw error;
+    }
+  }
+
+  async signToken(userId: string, email: string): Promise<{access_token: string}> {
+    const payload = {
+      sub: userId,
+      email
+    }
+
+    const secret = this.config.get('JWT_SECRET')
+
+    const token = await this.jwt.signAsync(payload, {
+      expiresIn: '15m',
+      secret: secret
+    }) 
+
+    return {
+      access_token: token,
     }
   }
 }
