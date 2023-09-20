@@ -1,6 +1,5 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { Request } from 'express';
 import { AuthDto } from './dto';
 
 @Controller('auth')
@@ -11,7 +10,8 @@ export class AuthController {
   signup(@Body() dto: AuthDto) {
     return this.authService.signup(dto);
   }
-
+  
+  @HttpCode(HttpStatus.OK)
   @Post('signin')
   login(@Body() dto: AuthDto) {
     return this.authService.signin(dto);
@@ -19,7 +19,7 @@ export class AuthController {
 }
 
 /* 
-------------- Version larga sin utilizar privet -----------------
+------------- Version larga sin utilizar private -----------------
 @Controller()
 export class AuthController {
     authService: AuthService;
